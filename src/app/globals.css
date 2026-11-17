@@ -24,3 +24,41 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes peekDog {
+  0%, 10%, 100% {
+    transform: translateY(68%);
+  }
+  20%, 42% {
+    transform: translateY(12%);
+  }
+  30% {
+    transform: translateY(8%) rotate(-3deg);
+  }
+  52% {
+    transform: translateY(68%);
+  }
+}
+
+@keyframes peekCat {
+  0%, 48%, 100% {
+    transform: translateY(66px);
+  }
+  58%, 82% {
+    transform: translateY(-12px);
+  }
+  70% {
+    transform: translateY(-16px) rotate(3deg);
+  }
+  92% {
+    transform: translateY(66px);
+  }
+}
+
+.animate-peek-dog {
+  animation: peekDog 9s ease-in-out infinite;
+}
+
+.animate-peek-cat {
+  animation: peekCat 9s ease-in-out infinite;
+}
