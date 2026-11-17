@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PetMarket — Frontend Web
 
-## Getting Started
+Aplicación web de comercio electrónico, reserva de servicios veterinarios/grooming y adopciones de mascotas para **PetMarket**, desarrollada con **Next.js (App Router)**, **TypeScript**, **Tailwind CSS** y **Zustand**.
 
-First, run the development server:
+---
+
+## Tecnologías y Herramientas Utilizadas
+
+* **Framework:** Next.js 16 (App Router) + React 19
+* **Lenguaje:** TypeScript
+* **Estilos y Animaciones:** Tailwind CSS v4 + animaciones CSS personalizadas
+* **Estado Global:** Zustand (con persistencia en `localStorage` para sesión JWT y carrito de compras)
+* **Comunicación HTTP:** Fetch API nativa conectada al backend en FastAPI
+
+---
+
+## Prerrequisitos (Qué necesitas descargar)
+
+Para ejecutar el frontend en local necesitas:
+1. **Git** (para clonar el repositorio).
+2. **Node.js v20 LTS o superior** y **npm** (incluido con Node.js).
+3. **El servidor `pet-backend` corriendo** en `http://localhost:8000` y con los datos iniciales cargados (`POST /seed`).
+
+---
+
+## Cómo verificar si ya tienes las herramientas instaladas
+
+Abre una terminal y ejecuta:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git --version
+node -v
+npm -v
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+* Asegúrate de que `node -v` muestre **`v20.x.x` o superior**.
+* Si alguno de los comandos no se reconoce, sigue los pasos de instalación.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Cómo descargar e instalar los prerrequisitos
 
-## Learn More
+### En Ubuntu / Debian
+1. Instala **Git** y **curl**:
+   ```bash
+   sudo apt update
+   sudo apt install -y git curl
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. Instala **Node.js 20 LTS** (incluye `npm`):
+   ```bash
+   curl -fsSL [https://deb.nodesource.com/setup_20.x](https://deb.nodesource.com/setup_20.x) | sudo -E bash -
+   sudo apt install -y nodejs
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### En Windows o macOS
+* **Git:** Descárgalo desde [git-scm.com](https://git-scm.com/).
+* **Node.js LTS:** Descarga el instalador LTS desde [nodejs.org](https://nodejs.org/).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Cómo correr el proyecto
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 1. Clonar el repositorio
+```bash
+git clone <URL_DE_TU_REPOSITORIO_FRONTEND>
+cd pet-frontend
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 2. Instalar dependencias
+```bash
+npm install
+```
+
+### 3. Configurar variables de entorno
+Crea tu archivo `.env.local` a partir de `.env.example`:
+```bash
+cp .env.example .env.local
+```
+
+Verifica que apunte a la URL donde corre tu backend:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### 4. Iniciar el servidor de desarrollo
+```bash
+npm run dev
+```
+
+Abre **`http://localhost:3000`** en tu navegador. *(Recuerda tener encendido `pet-backend` y haber ejecutado `POST /seed` para visualizar los productos, servicios y adopciones).*
+
+---
+
+## Rutas Principales de la Aplicación
+
+* `/` — Página de inicio con banner animado, categorías rápidas y productos destacados.
+* `/categorias/todas` — Tienda completa con filtros dinámicos (`Perros`, `Gatos`, `Farmacia`) e identidad visual por marca.
+* `/producto/[id]` — Ficha técnica del producto, atributos dinámicos y guardado en favoritos.
+* `/servicios` — Reserva de citas para Grooming, Consultas Veterinarias y Adiestramiento.
+* `/adopciones` — Catálogo de mascotas disponibles y envío de solicitudes de adopción.
+* `/carrito` — Carrito de compras persistente con ajuste de cantidades, selección de dirección de envío y checkout.
+* `/perfil` y `/perfil/historial` — Administración de direcciones, productos favoritos, métodos de pago e historial de órdenes.
+* `/login` y `/registro` — Inicio de sesión y registro de usuarios con autenticación JWT.
