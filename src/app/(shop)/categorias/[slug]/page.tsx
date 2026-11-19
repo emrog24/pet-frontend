@@ -102,6 +102,7 @@ export default function CategoriaPage() {
               categoria={producto.category.nombre}
               imagenUrl={producto.imagen_url}
               marca={producto.brand?.nombre}
+              stock={producto.stock}
             />
           ))}
         </div>

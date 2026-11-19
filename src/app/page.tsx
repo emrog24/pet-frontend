@@ -116,6 +116,7 @@ export default async function Home() {
                 categoria={producto.category.nombre}
                 imagenUrl={producto.imagen_url}
                 marca={producto.brand?.nombre}
+                stock={producto.stock}
               />
             ))}
           </div>

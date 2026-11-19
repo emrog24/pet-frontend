@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useCartStore } from "@/store/cartStore";
+import { getBrandTheme } from "@/lib/brandThemes";
 
 interface ProductCardProps {
   id: string;
@@ -10,86 +12,7 @@ interface ProductCardProps {
   categoria: string;
   imagenUrl: string;
   marca?: string | null;
-}
-
-interface BrandTheme {
-  cardBorder: string;
-  topAccent: string;
-  badgeBg: string;
-  badgeText: string;
-  priceText: string;
-  button: string;
-  imageBg: string;
-}
-
-const BRAND_THEMES: Record<string, BrandTheme> = {
-  proplan: {
-    cardBorder: "border-red-200 hover:border-red-500",
-    topAccent: "bg-gradient-to-r from-neutral-900 via-red-600 to-amber-500",
-    badgeBg: "bg-neutral-900",
-    badgeText: "text-amber-400",
-    priceText: "text-red-700",
-    button: "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white focus:ring-red-500",
-    imageBg: "bg-red-50/40",
-  },
-  nexgard: {
-    cardBorder: "border-purple-200 hover:border-purple-500",
-    topAccent: "bg-gradient-to-r from-purple-700 to-orange-500",
-    badgeBg: "bg-purple-100",
-    badgeText: "text-purple-800",
-    priceText: "text-purple-900",
-    button: "bg-purple-50 text-purple-700 hover:bg-purple-700 hover:text-white focus:ring-purple-500",
-    imageBg: "bg-purple-50/40",
-  },
-  kong: {
-    cardBorder: "border-rose-200 hover:border-red-600",
-    topAccent: "bg-red-600",
-    badgeBg: "bg-red-600",
-    badgeText: "text-white",
-    priceText: "text-red-600",
-    button: "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white focus:ring-red-500",
-    imageBg: "bg-rose-50/40",
-  },
-  "scoop away": {
-    cardBorder: "border-indigo-200 hover:border-indigo-500",
-    topAccent: "bg-gradient-to-r from-indigo-600 to-sky-500",
-    badgeBg: "bg-indigo-100",
-    badgeText: "text-indigo-700",
-    priceText: "text-indigo-900",
-    button: "bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white focus:ring-indigo-500",
-    imageBg: "bg-indigo-50/40",
-  },
-  "royal canin": {
-    cardBorder: "border-red-200 hover:border-red-500",
-    topAccent: "bg-red-600",
-    badgeBg: "bg-red-50",
-    badgeText: "text-red-700",
-    priceText: "text-gray-900",
-    button: "bg-red-50 text-red-600 hover:bg-red-600 hover:text-white focus:ring-red-500",
-    imageBg: "bg-gray-50",
-  },
-};
-
-const DEFAULT_THEME: BrandTheme = {
-  cardBorder: "border-gray-100 hover:border-blue-300",
-  topAccent: "bg-blue-600",
-  badgeBg: "bg-blue-50",
-  badgeText: "text-blue-600",
-  priceText: "text-gray-900",
-  button: "bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white focus:ring-blue-500",
-  imageBg: "bg-gray-50",
-};
-
-function getBrandTheme(marca?: string | null, nombre?: string): BrandTheme {
-  const key = marca?.trim().toLowerCase();
-  if (key && BRAND_THEMES[key]) return BRAND_THEMES[key];
-
-  // Respaldo por nombre si el producto aún no tiene brand_id asignado
-  const titleLower = (nombre || "").toLowerCase();
-  for (const brandKey of Object.keys(BRAND_THEMES)) {
-    if (titleLower.includes(brandKey)) return BRAND_THEMES[brandKey];
-  }
-  return DEFAULT_THEME;
+  stock?: number;
 }
 
 export default function ProductCard({
@@ -99,22 +22,41 @@ export default function ProductCard({
   categoria,
   imagenUrl,
   marca,
+  stock,
 }: ProductCardProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
-  const theme = getBrandTheme(marca, nombre);
+  const inCartQty = useCartStore((state) => state.getItemQuantity(id));
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isOutOfStock = stock !== undefined && stock <= 0;
+  const reachedMaxStock =
+    isMounted && stock !== undefined && stock > 0 && inCartQty >= stock;
+  const theme = getBrandTheme(marca, nombre, isOutOfStock);
 
   const handleAddToCart = () => {
+    if (isOutOfStock || reachedMaxStock) return;
     addItem({
       id,
       nombre,
       precio,
       imagenUrl,
+      stock,
     });
   };
 
   return (
     <div
-      className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border ${theme.cardBorder} hover:shadow-xl transition-all duration-300 flex flex-col group`}
+      className={`relative bg-white rounded-2xl overflow-hidden shadow-sm border ${
+        theme.cardBorder
+      } transition-all duration-300 flex flex-col group ${
+        isOutOfStock
+          ? "grayscale opacity-65 select-none"
+          : "hover:shadow-xl"
+      }`}
     >
       {/* Franja superior con los colores de la marca */}
       <div className={`h-1.5 w-full ${theme.topAccent}`} />
@@ -128,16 +70,23 @@ export default function ProductCard({
           <img
             src={imagenUrl}
             alt={`Imagen de ${nombre}`}
-            className="object-contain h-full w-full group-hover:scale-105 transition-transform duration-300"
+            className={`object-contain h-full w-full transition-transform duration-300 ${
+              isOutOfStock ? "opacity-80" : "group-hover:scale-105"
+            }`}
           />
 
-          {/* Gatito/perrito mini asomándose en la esquina al hacer hover */}
-          <span
-            aria-hidden="true"
-            className="absolute -bottom-6 right-2 text-xl opacity-0 group-hover:opacity-100 group-hover:-translate-y-6 transition-all duration-300"
-          >
-            🐾
-          </span>
+          {isOutOfStock ? (
+            <span className="absolute top-2.5 left-2.5 bg-neutral-900/90 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm">
+              Agotado
+            </span>
+          ) : (
+            <span
+              aria-hidden="true"
+              className="absolute -bottom-6 right-2 text-xl opacity-0 group-hover:opacity-100 group-hover:-translate-y-6 transition-all duration-300"
+            >
+              🐾
+            </span>
+          )}
         </Link>
 
         {/* Detalles del Producto */}
@@ -162,14 +111,40 @@ export default function ProductCard({
           </Link>
 
           <div className="mt-auto flex items-center justify-between pt-4">
-            <span className={`text-xl font-extrabold ${theme.priceText}`}>
-              ${precio.toFixed(2)}
-            </span>
+            <div>
+              <span className={`text-xl font-extrabold ${theme.priceText}`}>
+                ${precio.toFixed(2)}
+              </span>
+              {reachedMaxStock && (
+                <p className="text-[10px] font-bold text-amber-600">
+                  Máx. en carrito ({stock})
+                </p>
+              )}
+            </div>
 
             <button
+              type="button"
+              disabled={isOutOfStock || reachedMaxStock}
               onClick={handleAddToCart}
-              aria-label={`Agregar ${nombre} al carrito`}
-              className={`${theme.button} p-2.5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2`}
+              aria-label={
+                isOutOfStock
+                  ? `${nombre} agotado`
+                  : reachedMaxStock
+                  ? `Límite de stock alcanzado para ${nombre}`
+                  : `Agregar ${nombre} al carrito`
+              }
+              title={
+                isOutOfStock
+                  ? "Producto agotado"
+                  : reachedMaxStock
+                  ? `Ya tienes las ${stock} unidades disponibles en tu carrito`
+                  : "Agregar al carrito"
+              }
+              className={`${
+                isOutOfStock || reachedMaxStock
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : theme.button
+              } p-2.5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
