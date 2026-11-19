@@ -22,6 +22,15 @@ interface PaymentMethod {
   marca: string;
 }
 
+interface UserNotification {
+  id: number;
+  titulo: string;
+  mensaje: string;
+  tipo: "adopcion" | "cita" | "sistema";
+  leida: boolean;
+  creado_en: string;
+}
+
 export default function PerfilPage() {
   const router = useRouter();
   const token = useAuthStore((state) => state.token);
@@ -29,12 +38,13 @@ export default function PerfilPage() {
   const logout = useAuthStore((state) => state.logout);
 
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"direcciones" | "favoritos" | "pagos">("direcciones");
+  const [activeTab, setActiveTab] = useState<"direcciones" | "favoritos" | "pagos" | "mensajes">("direcciones");
   const [loading, setLoading] = useState(true);
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
 
   // Formulario nueva dirección
   const [calle, setCalle] = useState("");
@@ -66,11 +76,13 @@ export default function PerfilPage() {
       fetch(`${API_URL}/users/me/addresses`, { headers }).then((r) => (r.ok ? r.json() : [])),
       fetch(`${API_URL}/users/me/favorites`, { headers }).then((r) => (r.ok ? r.json() : [])),
       fetch(`${API_URL}/users/me/payments`, { headers }).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_URL}/users/me/notifications`, { headers }).then((r) => (r.ok ? r.json() : [])),
     ])
-      .then(([addrData, favData, payData]) => {
+      .then(([addrData, favData, payData, notifData]) => {
         setAddresses(addrData);
         setFavorites(favData);
         setPayments(payData);
+        setNotifications(notifData);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -151,9 +163,24 @@ export default function PerfilPage() {
     }
   };
 
+  const handleMarkRead = async (notifId: number) => {
+    if (!token) return;
+    const res = await fetch(`${API_URL}/users/me/notifications/${notifId}/read`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notifId ? { ...n, leida: true } : n))
+      );
+    }
+  };
+
   if (!isMounted || loading) {
     return <div className="py-20 text-center text-gray-500">Cargando perfil...</div>;
   }
+
+  const unreadCount = notifications.filter((n) => !n.leida).length;
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -192,6 +219,7 @@ export default function PerfilPage() {
           { key: "direcciones", label: `Direcciones (${addresses.length})` },
           { key: "favoritos", label: `Favoritos (${favorites.length})` },
           { key: "pagos", label: `Métodos de Pago (${payments.length})` },
+          { key: "mensajes", label: `Mensajes (${unreadCount})` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -425,6 +453,72 @@ export default function PerfilPage() {
               {guardandoPago ? "Guardando..." : "Guardar tarjeta"}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* SECCIÓN 4: MENSAJES Y NOTIFICACIONES */}
+      {activeTab === "mensajes" && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-gray-900">Notificaciones y Confirmaciones</h2>
+          {notifications.length === 0 ? (
+            <div className="bg-white p-8 rounded-2xl border border-gray-100 text-gray-500 text-sm">
+              No tienes mensajes ni notificaciones por el momento.
+            </div>
+          ) : (
+            notifications.map((notif) => {
+              const isCancelled = notif.titulo.toLowerCase().includes("cancelada");
+              return (
+                <div
+                  key={notif.id}
+                  className={`p-5 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                    notif.leida
+                      ? "bg-white border-gray-100"
+                      : isCancelled
+                      ? "bg-red-50/70 border-red-300 shadow-sm"
+                      : notif.tipo === "adopcion"
+                      ? "bg-amber-50/70 border-amber-300 shadow-sm"
+                      : "bg-emerald-50/70 border-emerald-300 shadow-sm"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className={`text-[11px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                          isCancelled
+                            ? "bg-red-200 text-red-900"
+                            : notif.tipo === "adopcion"
+                            ? "bg-amber-200 text-amber-900"
+                            : "bg-emerald-200 text-emerald-900"
+                        }`}
+                      >
+                        {isCancelled
+                          ? "Cita Cancelada"
+                          : notif.tipo === "adopcion"
+                          ? "Adopción"
+                          : "Cita / Servicio"}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(notif.creado_en).toLocaleDateString("es-MX", {
+                          dateStyle: "medium",
+                        })}
+                      </span>
+                    </div>
+                    <h3 className="font-bold text-gray-900">{notif.titulo}</h3>
+                    <p className="text-sm text-gray-700 mt-1">{notif.mensaje}</p>
+                  </div>
+
+                  {!notif.leida && (
+                    <button
+                      onClick={() => handleMarkRead(notif.id)}
+                      className="px-4 py-2 text-xs font-bold bg-white border border-gray-200 text-gray-700 rounded-full hover:bg-gray-100 transition flex-shrink-0"
+                    >
+                      Marcar como leído
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
       )}
     </div>

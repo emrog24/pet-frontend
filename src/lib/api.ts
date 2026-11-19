@@ -24,7 +24,7 @@ export interface User {
   email: string;
   nombre: string;
   telefono?: string | null;
-  rol: string;
+  rol?: string;
 }
 
 export interface AuthResponse {

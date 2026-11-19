@@ -1,158 +1,180 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { API_URL, Product } from "@/lib/api";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 
-export default function ProductoDetallePage() {
-  const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const [producto, setProducto] = useState<Product | null>(null);
+export default function ProductDetailPage() {
+  const params = useParams();
+  const productId = params?.id as string;
+
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [agregado, setAgregado] = useState(false);
-  const [esFavorito, setEsFavorito] = useState(false);
+  const [addedMsg, setAddedMsg] = useState(false);
+  const [isFav, setIsFav] = useState(false);
 
   const addItem = useCartStore((state) => state.addItem);
   const token = useAuthStore((state) => state.token);
 
   useEffect(() => {
-    if (!params?.id) return;
-    fetch(`${API_URL}/products/${params.id}`)
+    if (!productId) return;
+    fetch(`${API_URL}/products/${productId}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        setProducto(data);
+        setProduct(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [params?.id]);
+  }, [productId]);
 
   const handleToggleFavorite = async () => {
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    if (!producto) return;
-
-    const res = await fetch(`${API_URL}/users/me/favorites/${producto.id}`, {
+    if (!token || !product) return;
+    const res = await fetch(`${API_URL}/users/me/favorites/${product.id}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
-      const data = await res.json();
-      setEsFavorito(data.status === "added");
+      setIsFav((prev) => !prev);
     }
+  };
+
+  const getBrandBadgeStyle = (brandName?: string | null) => {
+    if (!brandName) return "bg-slate-800 text-white";
+    const key = brandName.toLowerCase();
+    if (key.includes("proplan")) return "bg-black text-amber-400 border border-red-600";
+    if (key.includes("kong")) return "bg-red-600 text-white";
+    if (key.includes("nexgard")) return "bg-purple-700 text-white";
+    return "bg-blue-900 text-white";
   };
 
   if (loading) {
     return <div className="py-20 text-center text-gray-500">Cargando producto...</div>;
   }
 
-  if (!producto) {
+  if (!product) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">Producto no encontrado</h1>
-        <Link href="/" className="text-blue-600 hover:underline">Volver a la tienda</Link>
+      <div className="py-20 text-center">
+        <p className="text-gray-500 mb-4">Producto no encontrado.</p>
+        <Link href="/categorias/todas" className="text-blue-600 font-bold hover:underline">
+          ← Volver al catálogo
+        </Link>
       </div>
     );
   }
 
-  const handleAddToCart = () => {
-    addItem({
-      id: producto.id,
-      nombre: producto.nombre,
-      precio: producto.precio,
-      imagenUrl: producto.imagen_url,
-    });
-    setAgregado(true);
-    setTimeout(() => setAgregado(false), 2000);
-  };
+  const atributosEntries = Object.entries(product.atributos || {});
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <Link href="/" className="inline-flex items-center text-gray-500 hover:text-blue-600 mb-8 transition-colors">
+    <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <Link
+        href="/categorias/todas"
+        className="inline-block text-sm text-gray-400 hover:text-white mb-6 transition"
+      >
         ← Volver al catálogo
       </Link>
 
-      <div className="flex flex-col md:flex-row gap-12 bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-gray-100">
-        <div className="w-full md:w-1/2 bg-gray-50 rounded-2xl flex items-center justify-center p-8">
+      <div className="bg-white rounded-3xl p-6 md:p-10 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        {/* Imagen */}
+        <div className="bg-gray-50 rounded-2xl p-6 flex items-center justify-center">
           <img
-            src={producto.imagen_url}
-            alt={producto.nombre}
-            className="w-full max-w-md object-contain"
+            src={product.imagen_url}
+            alt={product.nombre}
+            className="max-h-96 object-contain"
           />
         </div>
 
-        <div className="w-full md:w-1/2 flex flex-col justify-center">
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-blue-500 uppercase tracking-widest">
-                {producto.category.nombre}
+        {/* Información */}
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600">
+                {product.category?.nombre}
               </span>
-              {producto.brand && (
-                <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full font-semibold">
-                  {producto.brand.nombre}
+              {product.brand && (
+                <span
+                  className={`text-[11px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full ${getBrandBadgeStyle(
+                    product.brand.nombre
+                  )}`}
+                >
+                  {product.brand.nombre}
                 </span>
               )}
             </div>
 
-            <button
-              onClick={handleToggleFavorite}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition ${
-                esFavorito
-                  ? "bg-pink-50 border-pink-200 text-pink-600"
-                  : "bg-gray-50 border-gray-200 text-gray-600 hover:border-pink-300"
-              }`}
-            >
-              {esFavorito ? "♥ Guardado" : "♡ Favorito"}
-            </button>
+            {token && (
+              <button
+                onClick={handleToggleFavorite}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition ${
+                  isFav
+                    ? "bg-red-50 border-red-200 text-red-600"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300"
+                }`}
+              >
+                {isFav ? "♥ En favoritos" : "♡ Favorito"}
+              </button>
+            )}
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight mb-4">
-            {producto.nombre}
+          <h1 className="text-3xl font-extrabold text-gray-900 leading-tight">
+            {product.nombre}
           </h1>
-          <p className="text-4xl font-black text-blue-600 mb-2">
-            ${producto.precio.toFixed(2)}
-          </p>
-          <p className="text-sm text-gray-500 mb-6">
-            Disponibles: <span className="font-semibold text-gray-800">{producto.stock} unidades</span>
+
+          <p className="text-3xl font-black text-blue-600 mt-4">
+            ${product.precio.toFixed(2)}
           </p>
 
-          <div className="border-t border-gray-100 py-5 mb-4">
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Descripción</h3>
-            <p className="text-gray-600 leading-relaxed">{producto.descripcion}</p>
+          <p className="text-sm text-gray-600 mt-2">
+            Disponibles:{" "}
+            <strong className={product.stock <= 5 ? "text-amber-600" : "text-gray-900"}>
+              {product.stock} unidades
+            </strong>
+          </p>
+
+          <hr className="my-5 border-gray-100" />
+
+          <div>
+            <h2 className="text-sm font-bold text-gray-900 mb-1">Descripción</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              {product.descripcion || "Sin descripción adicional."}
+            </p>
           </div>
 
-          {producto.atributos && Object.keys(producto.atributos).length > 0 && (
-            <div className="bg-gray-50 rounded-2xl p-4 mb-6">
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+          {atributosEntries.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-xs font-bold uppercase text-gray-400 mb-2">
                 Especificaciones
-              </h4>
-              <dl className="grid grid-cols-2 gap-2 text-sm">
-                {Object.entries(producto.atributos).map(([clave, valor]) => (
-                  <div key={clave} className="flex justify-between bg-white px-3 py-2 rounded-lg border border-gray-100">
-                    <dt className="text-gray-500 capitalize">{clave.replace("_", " ")}:</dt>
-                    <dd className="font-semibold text-gray-800">
-                      {typeof valor === "boolean" ? (valor ? "Sí" : "No") : String(valor)}
-                    </dd>
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                {atributosEntries.map(([clave, valor]) => (
+                  <div
+                    key={clave}
+                    className="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 text-xs"
+                  >
+                    <span className="text-gray-400 capitalize">{clave.replace("_", " ")}: </span>
+                    <strong className="text-gray-800">{String(valor)}</strong>
                   </div>
                 ))}
-              </dl>
+              </div>
             </div>
           )}
 
           <button
-            onClick={handleAddToCart}
-            disabled={agregado || producto.stock === 0}
-            className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${
-              agregado
-                ? "bg-green-500 text-white shadow-green-200"
-                : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200"
-            }`}
+            disabled={product.stock === 0}
+            onClick={() => {
+              addItem(product);
+              setAddedMsg(true);
+              setTimeout(() => setAddedMsg(false), 2000);
+            }}
+            className="mt-6 w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition disabled:opacity-50"
           >
-            {agregado ? "Agregado al carrito" : "Agregar al carrito"}
+            {product.stock === 0
+              ? "Agotado"
+              : addedMsg
+              ? "✓ Agregado al carrito"
+              : "Agregar al carrito"}
           </button>
         </div>
       </div>

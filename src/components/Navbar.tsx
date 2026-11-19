@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
-import PeekingPets from "@/components/PeekingPets";
 
 export default function Navbar() {
   const router = useRouter();
@@ -53,9 +52,17 @@ export default function Navbar() {
           </div>
 
           {/* Acciones de Escritorio */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden md:flex items-center space-x-5">
             {isMounted && user ? (
               <>
+                {user.rol === "admin" && (
+                  <Link
+                    href="/admin"
+                    className="px-3.5 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-full hover:bg-slate-700 transition shadow-sm"
+                  >
+                    Panel Admin
+                  </Link>
+                )}
                 <Link
                   href="/perfil"
                   className="text-gray-700 hover:text-blue-600 font-semibold transition"
@@ -109,7 +116,7 @@ export default function Navbar() {
       {isOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link href="/categorias/perros" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">
+            <Link href="/categorias/todas" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">
               Tienda
             </Link>
             <Link href="/servicios" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">
@@ -121,8 +128,17 @@ export default function Navbar() {
 
             {isMounted && user ? (
               <>
-                <Link href="/perfil/historial" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-semibold text-blue-600 hover:bg-gray-50">
-                  Mis Compras ({firstName})
+                {user.rol === "admin" && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsOpen(false)}
+                    className="block px-3 py-2 rounded-md text-base font-bold text-slate-900 bg-slate-100 hover:bg-slate-200"
+                  >
+                    Panel Admin
+                  </Link>
+                )}
+                <Link href="/perfil" onClick={() => setIsOpen(false)} className="block px-3 py-2 rounded-md text-base font-semibold text-blue-600 hover:bg-gray-50">
+                  Mi Perfil ({firstName})
                 </Link>
                 <button
                   onClick={handleLogout}
