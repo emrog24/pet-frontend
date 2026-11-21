@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import PeekingPets from "@/components/PeekingPets";
@@ -13,9 +14,38 @@ async function getProductosDestacados(): Promise<Product[]> {
   }
 }
 
-export default async function Home() {
+// Componente separado para que Next.js 16 haga streaming de los productos dentro de <Suspense>
+async function ProductosDestacadosGrid() {
   const productos = await getProductosDestacados();
 
+  if (productos.length === 0) {
+    return (
+      <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center text-gray-500">
+        No se encontraron productos. Verifica que FastAPI esté corriendo y ejecuta{" "}
+        <code>POST /seed</code>.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {productos.map((producto) => (
+        <ProductCard
+          key={producto.id}
+          id={producto.id}
+          nombre={producto.nombre}
+          precio={producto.precio}
+          categoria={producto.category.nombre}
+          imagenUrl={producto.imagen_url}
+          marca={producto.brand?.nombre}
+          stock={producto.stock}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function Home() {
   return (
     <div className="flex flex-col gap-12 pb-12">
       {/* 1. HERO BANNER CON MASCOTAS ESCONDIÉNDOSE DETRÁS DEL BORDE SUPERIOR */}
@@ -92,7 +122,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 3. PRODUCTOS DESTACADOS */}
+      {/* 3. PRODUCTOS DESTACADOS ENVUELTOS EN <Suspense> */}
       <section className="mt-4">
         <div className="flex justify-between items-end mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Productos Destacados</h2>
@@ -101,26 +131,15 @@ export default async function Home() {
           </Link>
         </div>
 
-        {productos.length === 0 ? (
-          <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center text-gray-500">
-            No se encontraron productos. Verifica que FastAPI esté corriendo y ejecuta <code>POST /seed</code>.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {productos.map((producto) => (
-              <ProductCard
-                key={producto.id}
-                id={producto.id}
-                nombre={producto.nombre}
-                precio={producto.precio}
-                categoria={producto.category.nombre}
-                imagenUrl={producto.imagen_url}
-                marca={producto.brand?.nombre}
-                stock={producto.stock}
-              />
-            ))}
-          </div>
-        )}
+        <Suspense
+          fallback={
+            <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center text-gray-500">
+              Cargando productos destacados...
+            </div>
+          }
+        >
+          <ProductosDestacadosGrid />
+        </Suspense>
       </section>
     </div>
   );

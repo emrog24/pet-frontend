@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import { API_URL, Category, Product } from "@/lib/api";
 
-export default function CategoriaPage() {
+function CategoriaContent() {
   const params = useParams<{ slug: string }>();
   const slug = params?.slug ? decodeURIComponent(params.slug).toLowerCase() : "todas";
 
@@ -108,5 +108,13 @@ export default function CategoriaPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CategoriaPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-gray-500">Cargando catálogo...</div>}>
+      <CategoriaContent />
+    </Suspense>
   );
 }

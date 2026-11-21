@@ -152,7 +152,7 @@ export default function CarritoPage() {
                     >
                       +
                     </button>
-                    {item.stock !== undefined && item.quantity >= item.stock && (
+                    {item.stock !== undefined && item.cantidad >= item.stock && (
                       <span className="text-[11px] font-semibold text-amber-600 block mt-1">
                         Máx. {item.stock} disponibles
                       </span>

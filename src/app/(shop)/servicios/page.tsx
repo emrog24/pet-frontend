@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_URL } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -53,7 +53,7 @@ function getCurrentHHMM(): string {
   return `${hh}:${mm}`;
 }
 
-export default function ServiciosPage() {
+function ServiciosContent() {
   const router = useRouter();
   const token = useAuthStore((state) => state.token);
 
@@ -69,13 +69,21 @@ export default function ServiciosPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Estados del calendario mensual y disponibilidad
-  const today = new Date();
-  const todayStr = formatLocalDate(today);
-  const [viewYear, setViewYear] = useState<number>(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState<number>(today.getMonth()); // 0 - 11
+  // Fecha y hora actuales inicializadas en cliente (evita error de prerender con new Date())
+  const [todayStr, setTodayStr] = useState<string>("");
+  const [currentTimeStr, setCurrentTimeStr] = useState<string>("");
+  const [viewYear, setViewYear] = useState<number | null>(null);
+  const [viewMonth, setViewMonth] = useState<number | null>(null); // 0 - 11
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
   const [loadingCalendar, setLoadingCalendar] = useState(false);
+
+  useEffect(() => {
+    const now = new Date();
+    setTodayStr(formatLocalDate(now));
+    setCurrentTimeStr(getCurrentHHMM());
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+  }, []);
 
   useEffect(() => {
     fetch(`${API_URL}/services`)
@@ -100,7 +108,6 @@ export default function ServiciosPage() {
         const data: AvailabilityResponse = await res.json();
         setAvailability(data);
 
-        // Si el día elegido ya se llenó, limpiar la selección automáticamente
         setSelectedDate((prevDate) =>
           prevDate && data.dias[prevDate]?.lleno ? "" : prevDate
         );
@@ -111,41 +118,51 @@ export default function ServiciosPage() {
   };
 
   useEffect(() => {
-    if (!selectedService) return;
+    if (!selectedService || viewYear === null || viewMonth === null) return;
     fetchAvailability(selectedService.tipo, viewYear, viewMonth);
   }, [selectedService, viewYear, viewMonth]);
 
+  if (loading || viewYear === null || viewMonth === null) {
+    return <div className="py-20 text-center text-gray-500">Cargando servicios...</div>;
+  }
+
+  const [minYearStr, minMonthStr] = todayStr.split("-");
+  const minYear = Number(minYearStr);
+  const minMonth = Number(minMonthStr) - 1;
+  const isAtCurrentMonth = viewYear === minYear && viewMonth === minMonth;
+
   const handlePrevMonth = () => {
-    if (viewYear === today.getFullYear() && viewMonth === today.getMonth()) return;
+    if (isAtCurrentMonth) return;
     if (viewMonth === 0) {
       setViewMonth(11);
-      setViewYear((y) => y - 1);
+      setViewYear((y) => (y !== null ? y - 1 : null));
     } else {
-      setViewMonth((m) => m - 1);
+      setViewMonth((m) => (m !== null ? m - 1 : null));
     }
   };
 
   const handleNextMonth = () => {
     if (viewMonth === 11) {
       setViewMonth(0);
-      setViewYear((y) => y + 1);
+      setViewYear((y) => (y !== null ? y + 1 : null));
     } else {
-      setViewMonth((m) => m + 1);
+      setViewMonth((m) => (m !== null ? m + 1 : null));
     }
   };
 
-  const isSelectedDateToday = selectedDate === todayStr;
-  const minTimeForToday = getCurrentHHMM();
-  const isTimeInPast = isSelectedDateToday && selectedTime <= minTimeForToday;
+  const isSelectedDateToday = Boolean(todayStr) && selectedDate === todayStr;
+  const isTimeInPast =
+    isSelectedDateToday && Boolean(currentTimeStr) && selectedTime <= currentTimeStr;
 
   const handleSelectDate = (dateStr: string) => {
     setErrorMsg("");
     setSelectedDate(dateStr);
 
-    // Si elige hoy y la hora actual por defecto ya pasó, adelantar 1 hora automáticamente
     if (dateStr === todayStr) {
       const now = new Date();
-      if (selectedTime <= getCurrentHHMM()) {
+      const nowHHMM = getCurrentHHMM();
+      setCurrentTimeStr(nowHHMM);
+      if (selectedTime <= nowHHMM) {
         const nextHour = Math.min(20, now.getHours() + 1);
         setSelectedTime(`${String(nextHour).padStart(2, "0")}:00`);
       }
@@ -174,8 +191,10 @@ export default function ServiciosPage() {
       return;
     }
 
-    if (isTimeInPast) {
-      setErrorMsg(`Para citas hoy debes elegir una hora posterior a las ${minTimeForToday} hrs.`);
+    const liveNowHHMM = getCurrentHHMM();
+    if (selectedDate === todayStr && selectedTime <= liveNowHHMM) {
+      setCurrentTimeStr(liveNowHHMM);
+      setErrorMsg(`Para citas hoy debes elegir una hora posterior a las ${liveNowHHMM} hrs.`);
       return;
     }
 
@@ -219,19 +238,13 @@ export default function ServiciosPage() {
 
   // Construcción de celdas del calendario (lunes a domingo)
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1);
-  const startOffset = (firstDayOfMonth.getDay() + 6) % 7; // Lunes = 0
+  const startOffset = (firstDayOfMonth.getDay() + 6) % 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const isAtCurrentMonth =
-    viewYear === today.getFullYear() && viewMonth === today.getMonth();
 
   const limiteDiario =
     availability?.limite_diario ??
     DAILY_LIMITS_LABEL[selectedService?.tipo.toLowerCase() || ""] ??
     5;
-
-  if (loading) {
-    return <div className="py-20 text-center text-gray-500">Cargando servicios...</div>;
-  }
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -472,7 +485,7 @@ export default function ServiciosPage() {
                   <input
                     type="time"
                     required
-                    min={isSelectedDateToday ? minTimeForToday : undefined}
+                    min={isSelectedDateToday ? currentTimeStr : undefined}
                     value={selectedTime}
                     onChange={(e) => {
                       setErrorMsg("");
@@ -496,7 +509,7 @@ export default function ServiciosPage() {
                 {isTimeInPast && (
                   <p className="text-xs text-red-600 font-bold mt-1.5">
                     ⚠️ Esa hora ya pasó el día de hoy. Elige una hora posterior a las{" "}
-                    {minTimeForToday} hrs.
+                    {currentTimeStr} hrs.
                   </p>
                 )}
               </div>
@@ -525,5 +538,13 @@ export default function ServiciosPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ServiciosPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-gray-500">Cargando servicios...</div>}>
+      <ServiciosContent />
+    </Suspense>
   );
 }

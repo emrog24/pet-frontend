@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { API_URL, Product } from "@/lib/api";
@@ -8,7 +8,8 @@ import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
 import { getBrandTheme } from "@/lib/brandThemes";
 
-export default function ProductDetailPage() {
+// 1. Cambiamos "export default function ProductDetailPage()" por "function ProductDetailContent()"
+function ProductDetailContent() {
   const params = useParams();
   const productId = params?.id as string;
 
@@ -253,5 +254,14 @@ export default function ProductDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// 2. Exportamos ProductDetailPage envolviendo el contenido en <Suspense>
+export default function ProductDetailPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-gray-500">Cargando producto...</div>}>
+      <ProductDetailContent />
+    </Suspense>
   );
 }
